@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { demoEvidence, demoJobs } from '../data/demoData'
-import { buildMatches, calculateScore, ensureEvidenceReferences, parseJD } from './engine'
+import { buildMatches, calculateScore, ensureEvidenceReferences, parseJD, resolveMatchesWithDecisions } from './engine'
 
 describe('Rule Mode engine', () => {
   it('parses JD into structured requirements', () => {
@@ -34,4 +34,15 @@ describe('Rule Mode engine', () => {
     expect(match.evidenceIds).toEqual([])
     expect(match.gap).toContain('补充')
   })
-})
+
+  it('applies edited and rejected human decisions to evidence references', () => {
+    const [suggested] = buildMatches(demoJobs[0], demoEvidence)
+    expect(suggested.evidenceIds.length).toBeGreaterThan(0)
+    const keptId = suggested.evidenceIds[0]
+    const edited = resolveMatchesWithDecisions([suggested], [{ id: 'D1', targetType: 'match', targetId: suggested.requirementId, status: 'edited', note: '', evidenceIds: [keptId, 'MISSING'], createdAt: '2026-09-04' }], demoEvidence)
+    expect(edited[0].evidenceIds).toEqual([keptId])
+
+    const rejected = resolveMatchesWithDecisions([suggested], [{ id: 'D2', targetType: 'match', targetId: suggested.requirementId, status: 'rejected', note: '', createdAt: '2026-09-04' }], demoEvidence)
+    expect(rejected[0].evidenceIds).toEqual([])
+    expect(rejected[0].strength).toBe(0)
+  })})

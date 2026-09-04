@@ -1,13 +1,13 @@
 import { BookOpenCheck, CheckCircle2, Gauge, MessageSquareText, Sparkles, Target } from 'lucide-react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DecisionLog, DecisionStatus, Evidence, InterviewRecord, Job } from '../domain/types'
-import { buildMatches, ensureEvidenceReferences } from '../lib/engine'
+import { buildMatches, ensureEvidenceReferences, resolveMatchesWithDecisions } from '../lib/engine'
 
-export function InterviewReview({ job, evidence, interviews, setInterviews, recordDecision }: { job: Job; evidence: Evidence[]; interviews: InterviewRecord[]; setInterviews: Dispatch<SetStateAction<InterviewRecord[]>>; recordDecision: (type: DecisionLog['targetType'], id: string, status: DecisionStatus, note?: string) => void }) {
+export function InterviewReview({ job, evidence, decisions, interviews, setInterviews, recordDecision }: { job: Job; evidence: Evidence[]; decisions: DecisionLog[]; interviews: InterviewRecord[]; setInterviews: Dispatch<SetStateAction<InterviewRecord[]>>; recordDecision: (type: DecisionLog['targetType'], id: string, status: DecisionStatus, note?: string) => void }) {
   const jobRecords = interviews.filter((item) => item.jobId === job.id)
   const generate = () => {
-    const matches = buildMatches(job, evidence)
-    const questions = job.requirements.slice(0, 4).map((requirement, index): InterviewRecord => { const match = matches.find((item) => item.requirementId === requirement.id)!; return { id: `IV-${job.id}-${Date.now()}-${index}`, jobId: job.id, question: `请结合真实项目说明：你如何证明自己${requirement.text}？`, answer: '', evidenceIds: ensureEvidenceReferences(match.evidenceIds.slice(0, 1), evidence), confidence: match.confidence, weakness: match.gap ?? '', nextAction: '', status: 'pending' } })
+    const matches = resolveMatchesWithDecisions(buildMatches(job, evidence), decisions, evidence)
+    const questions = job.requirements.slice(0, 4).map((requirement, index): InterviewRecord => { const match = matches.find((item) => item.requirementId === requirement.id)!; const rejected = match.evidenceIds.length === 0; const generated = { id: `IV-${job.id}-${requirement.id}`, jobId: job.id, question: `请结合真实项目说明：你如何证明自己${requirement.text}？`, answer: '', evidenceIds: rejected ? [] : ensureEvidenceReferences(match.evidenceIds.slice(0, 1), evidence), confidence: match.confidence, weakness: rejected ? '该证据匹配已被人工驳回，需要补充新的真实项目证据。' : match.gap ?? '', nextAction: '', status: 'pending' as DecisionStatus }; const existing = jobRecords.find((item) => item.question === generated.question) ?? jobRecords[index]; return existing ? { ...generated, id: existing.id, answer: existing.answer, weakness: existing.weakness, nextAction: existing.nextAction, status: existing.status, evidenceIds: existing.status === 'pending' ? generated.evidenceIds : existing.evidenceIds } : generated })
     setInterviews((items) => [...items.filter((item) => item.jobId !== job.id), ...questions])
   }
   const update = (id: string, patch: Partial<InterviewRecord>) => setInterviews((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item))
@@ -16,4 +16,3 @@ export function InterviewReview({ job, evidence, interviews, setInterviews, reco
 }
 
 function Summary({ icon: Icon, label, value, note, tone }: { icon: typeof Target; label: string; value: string; note: string; tone: string }) { return <div><span className={`metric-icon ${tone}`}><Icon size={19} /></span><div><small>{label}</small><strong>{value}</strong><p>{note}</p></div></div> }
-

@@ -87,3 +87,194 @@ test('核心求职闭环可真实操作并导出工作区', async ({ page }, tes
 })
 
 
+
+
+test('拒绝会清空职位并导致应用崩溃的非法工作区导入', async ({ page }) => {
+  await resetWorkspace(page)
+  await page.goto('/')
+  await expect(page.locator('.job-switcher option')).toHaveCount(6)
+
+  const dialogPromise = page.waitForEvent('dialog', { timeout: 3000 })
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'invalid-workspace.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ version: 1, jobs: [], evidence: [] })),
+  })
+  const dialog = await dialogPromise
+  expect(dialog.message()).toContain('导入失败')
+  await dialog.accept()
+
+  await expect(page.locator('.job-switcher option')).toHaveCount(6)
+  await expect(page.getByRole('heading', { name: /不是告诉你.*为什么匹配/ })).toBeVisible()
+})
+
+test('损坏的 localStorage 不阻止应用启动并会回退到演示数据', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('roleproof.jobs.v1', '{broken-json')
+    localStorage.setItem('roleproof.evidence.v1', 'not-json')
+  })
+  await page.goto('/')
+  await expect(page.locator('.job-switcher option')).toHaveCount(6)
+  await expect(page.locator('.metric-card').first()).toContainText('06')
+})
+
+
+test('空白公司、岗位和 JD 不会被当作有效职位保存', async ({ page }) => {
+  await resetWorkspace(page)
+  await page.goto('/')
+  await openSidebarView(page, '职位情报')
+  await page.getByRole('button', { name: '录入职位' }).click()
+  await page.getByLabel('公司 *').fill('   ')
+  await page.getByLabel('岗位名称 *').fill('   ')
+  await page.getByLabel('JD 原文 *').fill('      ')
+
+  let message = ''
+  page.once('dialog', async (dialog) => {
+    message = dialog.message()
+    await dialog.accept()
+  })
+  await page.getByRole('button', { name: '保存并解析' }).click()
+  expect(message).toContain('不能为空')
+
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.locator('.job-switcher option')).toHaveCount(6)
+})
+
+test('职位列表分数与岗位详情的实时证据分数保持一致', async ({ page }) => {
+  await resetWorkspace(page)
+  await page.goto('/')
+  await openSidebarView(page, '职位情报')
+  await page.getByRole('button', { name: '录入职位' }).click()
+  await page.getByLabel('公司 *').fill('分数一致性测试公司')
+  await page.getByLabel('岗位名称 *').fill('AI Agent 产品经理')
+  await page.getByLabel('JD 原文 *').fill('负责企业级 AI Agent 产品规划与工作流设计；建立模型评测体系并推动产品迭代。')
+  await page.getByRole('button', { name: '保存并解析' }).click()
+
+  const detailScore = Number((await page.locator('.hero-score strong').innerText()).replace(/\D/g, ''))
+  expect(detailScore).toBeGreaterThan(0)
+
+  await openSidebarView(page, '职位情报')
+  const row = page.locator('.table-row').filter({ hasText: '分数一致性测试公司' })
+  await expect(row.locator('.match-bar strong')).toHaveText(String(detailScore))
+})
+
+test('侧栏证据完整度和材料数量来自真实数据而非硬编码', async ({ page }) => {
+  await resetWorkspace(page)
+  await page.goto('/')
+  const footer = page.locator('.sidebar-footer')
+  await expect(footer).toContainText('67%')
+  await expect(footer).toContainText('6 个项目 · 0 份已挂材料')
+})
+
+test('被人工驳回的证据匹配不会进入作品集', async ({ page }) => {
+  await resetWorkspace(page)
+  await page.goto('/')
+  const workspace = {
+    version: 1,
+    exportedAt: '2026-09-04T00:00:00.000Z',
+    jobs: [{
+      id: 'J-REJECT', company: '人工决策测试公司', title: 'AI 产品经理', location: '上海', salary: '面议', stage: '准备中', score: 0, updatedAt: '刚刚', tags: ['Agent'],
+      source: { name: '测试数据', url: '#', capturedAt: '2026-09-04' },
+      jd: '负责 AI Agent 工作流设计和产品规划。',
+      requirements: [{ id: 'R-REJECT', jobId: 'J-REJECT', text: '负责 AI Agent 工作流设计和产品规划', kind: 'ai', weight: 10, keywords: ['Agent', '工作流'] }],
+    }],
+    evidence: [{
+      id: 'P-REJECT', project: '测试项目', title: 'Agent 工作流证据', role: 'AI 产品经理', capability: ['Agent 工作流'], action: '设计 Agent 工作流', result: '完成可运行 Demo', summary: '用于验证人工驳回是否生效', verification: 'verified', links: [], metrics: [], updatedAt: '2026-09-04',
+    }],
+    decisions: [], portfolio: [], interviews: [],
+  }
+  await page.locator('input[type="file"]').setInputFiles({ name: 'controlled-workspace.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(workspace)) })
+  await expect(page.locator('.job-switcher option')).toHaveCount(1)
+
+  await openSidebarView(page, '证据匹配')
+  await page.getByRole('button', { name: '驳回' }).click()
+  await expect(page.locator('.decision-state')).toHaveText('已驳回')
+
+  await openSidebarView(page, '作品集工坊')
+  await page.getByRole('button', { name: '生成第一版' }).click()
+  await expect(page.locator('.portfolio-section')).toHaveCount(0)
+  await expect(page.getByText('还没有岗位定制版本')).toBeVisible()
+})
+
+test('重新生成面试问题不会覆盖用户已经填写的回答和复盘', async ({ page }) => {
+  await resetWorkspace(page)
+  await page.goto('/')
+  await openSidebarView(page, '面试复盘')
+  await page.getByRole('button', { name: /生成问题|生成面试问题/ }).first().click()
+  const firstCard = page.locator('.interview-card').first()
+  await firstCard.locator('textarea').fill('这是我已经认真整理的 STAR 回答，不应被重新生成覆盖。')
+  await firstCard.locator('input').nth(0).fill('缺少业务指标')
+  await firstCard.locator('input').nth(1).fill('补充用户测试与转化数据')
+
+  await page.getByRole('button', { name: '生成面试问题' }).click()
+
+  await expect(page.locator('.interview-card').first().locator('textarea')).toHaveValue('这是我已经认真整理的 STAR 回答，不应被重新生成覆盖。')
+  await expect(page.locator('.interview-card').first().locator('input').nth(0)).toHaveValue('缺少业务指标')
+  await expect(page.locator('.interview-card').first().locator('input').nth(1)).toHaveValue('补充用户测试与转化数据')
+})
+
+test('重新生成作品集不会静默覆盖用户手工编辑的段落', async ({ page }) => {
+  await resetWorkspace(page)
+  await page.goto('/')
+  await openSidebarView(page, '作品集工坊')
+  await page.getByRole('button', { name: /生成第一版|生成岗位版本/ }).first().click()
+  const editedCopy = '这是我基于真实业务背景手工重写的项目介绍，必须保留。'
+  await page.locator('.portfolio-section textarea').first().fill(editedCopy)
+
+  await page.getByRole('button', { name: '生成岗位版本' }).click()
+
+  await expect(page.locator('.portfolio-section textarea').first()).toHaveValue(editedCopy)
+})
+
+test('语法正确但结构错误的 localStorage 会被拒绝并回退演示数据', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('roleproof.jobs.v1', JSON.stringify([]))
+    localStorage.setItem('roleproof.evidence.v1', JSON.stringify({ unexpected: true }))
+    localStorage.setItem('roleproof.decisions.v1', JSON.stringify({ unexpected: true }))
+  })
+  await page.goto('/')
+  await expect(page.locator('.job-switcher option')).toHaveCount(6)
+  await expect(page.locator('.metric-card').first()).toContainText('06')
+  await expect(page.locator('.sidebar-footer')).toContainText('6 个项目')
+})
+
+test('编辑后采用会真实修改证据引用并约束下游作品集', async ({ page }) => {
+  await resetWorkspace(page)
+  await page.goto('/')
+  const workspace = {
+    version: 1,
+    exportedAt: '2026-09-04T00:00:00.000Z',
+    jobs: [{
+      id: 'J-EDIT', company: '编辑决策测试公司', title: 'AI 产品经理', location: '上海', salary: '面议', stage: '准备中', score: 0, updatedAt: '刚刚', tags: ['Agent'],
+      source: { name: '测试数据', url: '#', capturedAt: '2026-09-04' },
+      jd: '负责 AI Agent 工作流设计和产品规划。',
+      requirements: [{ id: 'R-EDIT', jobId: 'J-EDIT', text: '负责 AI Agent 工作流设计和产品规划', kind: 'ai', weight: 10, keywords: ['Agent', '工作流'] }],
+    }],
+    evidence: [
+      { id: 'P-ONE', project: '保留项目', title: '应被采用的 Agent 证据', role: 'AI 产品经理', capability: ['Agent 工作流'], action: '设计 Agent 工作流', result: '完成 Demo', summary: '第一条证据', verification: 'verified', links: [], metrics: [], updatedAt: '2026-09-04' },
+      { id: 'P-TWO', project: '移除项目', title: '不应进入作品集的 Agent 证据', role: 'AI 产品经理', capability: ['Agent 工作流'], action: '设计 Agent 工作流', result: '完成 Demo', summary: '第二条证据', verification: 'verified', links: [], metrics: [], updatedAt: '2026-09-04' },
+    ],
+    decisions: [], portfolio: [], interviews: [],
+  }
+  await page.locator('input[type="file"]').setInputFiles({ name: 'edit-workspace.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(workspace)) })
+  await openSidebarView(page, '证据匹配')
+
+  let promptType = ''
+  page.once('dialog', async (dialog) => {
+    promptType = dialog.type()
+    await dialog.accept('P-ONE')
+  })
+  await page.getByRole('button', { name: '编辑后采用' }).click()
+  expect(promptType).toBe('prompt')
+
+  await expect(page.locator('.decision-state')).toHaveText('已编辑')
+  await expect(page.locator('.linked-cards')).toContainText('P-ONE')
+  await expect(page.locator('.linked-cards')).not.toContainText('P-TWO')
+
+  await openSidebarView(page, '作品集工坊')
+  await page.getByRole('button', { name: '生成第一版' }).click()
+  await expect(page.locator('.portfolio-section')).toHaveCount(1)
+  await expect(page.locator('.portfolio-section footer')).toContainText('P-ONE')
+  await expect(page.locator('.portfolio-section footer')).not.toContainText('P-TWO')
+})
+

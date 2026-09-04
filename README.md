@@ -65,7 +65,7 @@ RoleProof 把核心资产从“生成文本”改为“可核验的 Evidence（�
 
 - 为每条 Requirement 推荐对应 Evidence。
 - 显示匹配理由、关键词、证据强度和缺口。
-- 支持 Accept、Edit、Reject 三种人工决策。
+- 支持 Accept、Edit、Reject 三种人工决策；Edit 可修改实际 Evidence ID，Reject 会约束评分和下游生成。
 - 所有决定进入 Decision Log，避免 AI 建议被直接当作事实。
 
 ### 项目证据库
@@ -79,7 +79,7 @@ RoleProof 把核心资产从“生成文本”改为“可核验的 Evidence（�
 
 - 根据当前岗位和已确认的证据生成定制作品集。
 - 强制检查作品集中的 Evidence ID 是否真实存在。
-- 支持人工编辑和调整段落顺序。
+- 支持人工编辑；再次生成时保留已经编辑或确认的段落，避免内容丢失。
 - 没有证据支撑的能力明确显示为待补缺口。
 
 ### 面试准备与复盘
@@ -163,7 +163,7 @@ npm run check:all
 - Evidence 新建和搜索。
 - 证据匹配与 Accept 决策。
 - 岗位作品集生成及 Evidence ID 校验。
-- 面试问题、回答和复盘。
+- 面试问题、回答和复盘，并验证再次生成不会覆盖人工内容。
 - JSON 导出。
 - Console Error、Page Error 和移动端页面宽度。
 
@@ -208,6 +208,7 @@ docs/
 - [AI 能力边界](docs/ai-boundary.md)
 - [评测方案](docs/evaluation-plan.md)
 - [竞品研究](docs/competitive-research.md)
+- [可行性与缺陷审计](docs/feasibility-and-bug-audit.md)
 
 ## 下一步路线
 

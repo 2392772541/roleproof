@@ -26,13 +26,25 @@ export function AddJobModal({ jobs, onClose, onCreate }: { jobs: Job[]; onClose:
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }))
   const submit = (event: FormEvent) => {
     event.preventDefault()
+    const company = form.company.trim()
+    const title = form.title.trim()
+    const jd = form.jd.trim()
+    if (!company || !title || !jd) {
+      window.alert('公司、岗位名称和 JD 不能为空。')
+      return
+    }
     const id = `J-${idSuffix()}`
+    const requirements = parseJD(id, jd)
+    if (!requirements.length) {
+      window.alert('JD 内容过短，暂时无法拆解出有效岗位要求。')
+      return
+    }
     onCreate({
       id,
-      company: form.company.trim(), title: form.title.trim(), location: form.location.trim() || '地点待确认', salary: form.salary.trim() || '薪资面议',
+      company, title, location: form.location.trim() || '地点待确认', salary: form.salary.trim() || '薪资面议',
       stage: form.stage, score: 0, updatedAt: '刚刚', tags: splitList(form.tags),
       source: { name: form.sourceName.trim() || '手动录入', url: form.sourceUrl.trim() || '#', capturedAt: today() },
-      jd: form.jd.trim(), requirements: parseJD(id, form.jd.trim()),
+      jd, requirements,
     })
   }
   return <Modal title="录入目标职位" eyebrow="New Intelligence" description="保留原始 JD 和来源，系统只在副本上做结构化解析。" onClose={onClose}>
@@ -59,6 +71,11 @@ export function AddEvidenceModal({ onClose, onCreate }: { onClose: () => void; o
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }))
   const submit = (event: FormEvent) => {
     event.preventDefault()
+    const requiredValues = [form.project, form.title, form.role, form.summary, form.action, form.result]
+    if (requiredValues.some((value) => !value.trim()) || !splitList(form.capability).length) {
+      window.alert('项目名称、证据标题、角色、介绍、行动、结果和能力标签不能为空。')
+      return
+    }
     const links = [
       form.github.trim() && { label: 'GitHub', url: form.github.trim(), type: 'github' as const },
       form.demo.trim() && { label: '产品 Demo', url: form.demo.trim(), type: 'demo' as const },
@@ -89,13 +106,23 @@ export function AddEvidenceModal({ onClose, onCreate }: { onClose: () => void; o
 
 export function EditRequirementModal({ requirement, onClose, onSave }: { requirement: Requirement; onClose: () => void; onSave: (requirement: Requirement) => void }) {
   const [form, setForm] = useState({ text: requirement.text, kind: requirement.kind, weight: requirement.weight, keywords: requirement.keywords.join('，') })
-  const submit = (event: FormEvent) => { event.preventDefault(); onSave({ ...requirement, text: form.text.trim(), kind: form.kind, weight: Number(form.weight), keywords: splitList(form.keywords) }) }
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    const text = form.text.trim()
+    const keywords = splitList(form.keywords)
+    const weight = Number(form.weight)
+    if (!text || !keywords.length || !Number.isFinite(weight) || weight < 1 || weight > 10) {
+      window.alert('要求原文、1–10 的权重和至少一个匹配关键词不能为空。')
+      return
+    }
+    onSave({ ...requirement, text, kind: form.kind, weight, keywords })
+  }
   return <Modal title="校正岗位要求" eyebrow="Human Review" description="AI 解析结果只是草稿，最终分类、权重和关键词由你确认。" onClose={onClose}>
     <form onSubmit={submit}>
       <div className="form-grid">
         <Field label="要求原文" required wide><textarea required value={form.text} onChange={(e) => setForm((value) => ({ ...value, text: e.target.value }))} /></Field>
         <Field label="要求类型"><select value={form.kind} onChange={(e) => setForm((value) => ({ ...value, kind: e.target.value as RequirementKind }))}>{['must', 'nice', 'responsibility', 'ai', 'product', 'domain'].map((kind) => <option value={kind} key={kind}>{kind}</option>)}</select></Field>
-        <Field label="权重（1–10）"><input type="number" min="1" max="10" value={form.weight} onChange={(e) => setForm((value) => ({ ...value, weight: Number(e.target.value) }))} /></Field>
+        <Field label="权重（1–10）"><input required type="number" min="1" max="10" value={form.weight} onChange={(e) => setForm((value) => ({ ...value, weight: Number(e.target.value) }))} /></Field>
         <Field label="匹配关键词" required wide hint="关键词直接参与证据匹配，请保留最能代表要求的 2–5 个词。"><input required value={form.keywords} onChange={(e) => setForm((value) => ({ ...value, keywords: e.target.value }))} /></Field>
       </div>
       <footer className="modal-actions"><button type="button" className="secondary" onClick={onClose}>取消</button><button type="submit" className="primary">保存校正</button></footer>

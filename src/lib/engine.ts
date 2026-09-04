@@ -1,4 +1,4 @@
-import type { Evidence, EvidenceMatch, Job, Requirement, RequirementKind, ScoreBreakdown } from '../domain/types'
+import type { DecisionLog, Evidence, EvidenceMatch, Job, Requirement, RequirementKind, ScoreBreakdown } from '../domain/types'
 
 const taxonomy: Array<{ kind: RequirementKind; keywords: string[] }> = [
   { kind: 'ai', keywords: ['Agent', '智能体', 'RAG', '大模型', 'Prompt', '评测', '模型', '工具调用', 'Embedding'] },
@@ -124,3 +124,15 @@ export function ensureEvidenceReferences(ids: string[], evidenceList: Evidence[]
   return ids.filter((id) => valid.has(id))
 }
 
+
+export function resolveMatchesWithDecisions(matches: EvidenceMatch[], decisions: DecisionLog[], evidenceList: Evidence[]) {
+  return matches.map((match) => {
+    const decision = decisions.find((item) => item.targetType === 'match' && item.targetId === match.requirementId)
+    if (decision?.status === 'rejected') return { ...match, evidenceIds: [], strength: 0 as const, confidence: 0, gap: '该证据匹配已被人工驳回，需要补充新的真实项目证据。' }
+    if (decision?.status === 'edited' && decision.evidenceIds) {
+      const evidenceIds = ensureEvidenceReferences(decision.evidenceIds, evidenceList)
+      return { ...match, evidenceIds, strength: evidenceIds.length ? match.strength : 0 as const, gap: evidenceIds.length ? match.gap : '人工编辑后没有保留证据，需要补充新的真实项目证据。' }
+    }
+    return match
+  })
+}

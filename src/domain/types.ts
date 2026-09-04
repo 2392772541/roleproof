@@ -79,6 +79,7 @@ export interface DecisionLog {
   targetId: string
   status: DecisionStatus
   note: string
+  evidenceIds?: string[]
   createdAt: string
 }
 
