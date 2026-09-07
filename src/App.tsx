@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bell, ChevronDown, Download, FileSearch, FlaskConical, FolderKanban, LayoutDashboard, Library, Menu, MessageSquareText, Network, Radar, RotateCcw, Upload, WandSparkles } from 'lucide-react'
 import './App.css'
 import { demoEvidence, demoJobs } from './data/demoData'
@@ -30,6 +30,16 @@ const navItems = [
   { id: 'interview' as View, label: '面试复盘', eyebrow: 'Interview Review', icon: MessageSquareText },
 ]
 
+const legacyDemoCompanies = ['星海科技', '澄明教育', '远航电商', '山岚软件', '拾光传媒', '云阶智能']
+const legacyDemoProjects = ['InfluenceOS', 'RoleProof', 'AI Script Reviewer', '辰曦经营助手', 'InsightLoop', 'KnowledgeOS']
+
+function isLegacySeedData(jobs: Job[], evidence: Evidence[]) {
+  return jobs.length === legacyDemoCompanies.length
+    && evidence.length === legacyDemoProjects.length
+    && legacyDemoCompanies.every((company) => jobs.some((job) => job.company === company))
+    && legacyDemoProjects.every((project) => evidence.some((item) => item.project === project))
+}
+
 function App() {
   const [view, setView] = useState<View>('project')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -49,6 +59,16 @@ function App() {
   const verifiedEvidenceCount = evidence.filter((item) => item.verification === 'verified').length
   const evidenceCompleteness = evidence.length ? Math.round(verifiedEvidenceCount / evidence.length * 100) : 0
   const attachedMaterialCount = evidence.flatMap((item) => item.links).filter((link) => link.url.trim() && link.url !== '#').length
+
+  useEffect(() => {
+    if (!isLegacySeedData(jobs, evidence)) return
+    setJobs(demoJobs)
+    setEvidence(demoEvidence)
+    setSelectedJobId(demoJobs[0].id)
+    setDecisions([])
+    setPortfolio([])
+    setInterviews([])
+  }, [jobs, evidence, setJobs, setEvidence, setSelectedJobId, setDecisions, setPortfolio, setInterviews])
 
   const navigate = (next: View) => {
     setView(next)

@@ -117,6 +117,28 @@ test('拒绝会清空职位并导致应用崩溃的非法工作区导入', async
   await expect(page.getByRole('heading', { name: /个人独立项目证据包/ })).toBeVisible()
 })
 
+test('旧版虚构种子数据会自动迁移为当前真实项目证据', async ({ page }) => {
+  await page.addInitScript(() => {
+    const companies = ['星海科技', '澄明教育', '远航电商', '山岚软件', '拾光传媒', '云阶智能']
+    const projects = ['InfluenceOS', 'RoleProof', 'AI Script Reviewer', '辰曦经营助手', 'InsightLoop', 'KnowledgeOS']
+    localStorage.setItem('roleproof.jobs.v1', JSON.stringify(companies.map((company, index) => ({
+      id: `J00${index + 1}`, company, title: '旧版岗位', location: '中国', salary: '面议', stage: '关注', score: 0, updatedAt: '2026-09-04', tags: [],
+      source: { name: '旧演示数据', url: '#', capturedAt: '2026-09-04' }, jd: '负责旧版 AI 产品功能。',
+      requirements: [{ id: `R-OLD-${index}`, jobId: `J00${index + 1}`, text: '负责旧版 AI 产品功能', kind: 'product', weight: 8, keywords: ['产品'] }],
+    }))))
+    localStorage.setItem('roleproof.evidence.v1', JSON.stringify(projects.map((project, index) => ({
+      id: `P-OLD-${index}`, project, title: '旧版项目证据', role: '产品经理', capability: ['产品'], action: '旧行动', result: '旧结果', summary: '旧摘要', verification: 'verified', links: [], metrics: [], updatedAt: '2026-09-04',
+    }))))
+    localStorage.setItem('roleproof.selected-job.v1', JSON.stringify('J001'))
+  })
+
+  await page.goto('/')
+  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await expect(page.locator('.job-switcher')).toContainText('公开岗位研究样本 A')
+  await expect(page.locator('.sidebar-footer')).toContainText('3 个项目 · 12 份已挂材料')
+  await expect(page.getByText('InfluenceOS')).toHaveCount(0)
+})
+
 test('恢复演示数据需要人工确认并清除浏览器中的旧项目数据', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('roleproof.jobs.v1', JSON.stringify([{
