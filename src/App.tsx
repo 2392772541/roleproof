@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Bell, ChevronDown, Download, FileSearch, LayoutDashboard, Library, Menu, MessageSquareText, Network, Radar, Upload, WandSparkles } from 'lucide-react'
+import { Bell, ChevronDown, Download, FileSearch, FlaskConical, FolderKanban, LayoutDashboard, Library, Menu, MessageSquareText, Network, Radar, Upload, WandSparkles } from 'lucide-react'
 import './App.css'
 import { demoEvidence, demoJobs } from './data/demoData'
 import type { DecisionLog, DecisionStatus, Evidence, InterviewRecord, Job, PortfolioSection } from './domain/types'
@@ -13,10 +13,14 @@ import { MatchMatrix } from './pages/MatchMatrix'
 import { EvidenceLibrary } from './pages/EvidenceLibrary'
 import { PortfolioStudio } from './pages/PortfolioStudio'
 import { InterviewReview } from './pages/InterviewReview'
+import { ProjectCase } from './pages/ProjectCase'
+import { EvaluationLab } from './pages/EvaluationLab'
 
-export type View = 'dashboard' | 'intelligence' | 'detail' | 'match' | 'evidence' | 'portfolio' | 'interview'
+export type View = 'project' | 'evaluation' | 'dashboard' | 'intelligence' | 'detail' | 'match' | 'evidence' | 'portfolio' | 'interview'
 
 const navItems = [
+  { id: 'project' as View, label: '项目档案', eyebrow: 'Project Case', icon: FolderKanban },
+  { id: 'evaluation' as View, label: '评测实验室', eyebrow: 'Evaluation', icon: FlaskConical },
   { id: 'dashboard' as View, label: '总览', eyebrow: 'Overview', icon: LayoutDashboard },
   { id: 'intelligence' as View, label: '职位情报', eyebrow: 'Intelligence', icon: Radar },
   { id: 'detail' as View, label: '岗位解析', eyebrow: 'Job Detail', icon: FileSearch },
@@ -27,7 +31,7 @@ const navItems = [
 ]
 
 function App() {
-  const [view, setView] = useState<View>('dashboard')
+  const [view, setView] = useState<View>('project')
   const [menuOpen, setMenuOpen] = useState(false)
   const [jobs, setJobs] = useLocalStorage<Job[]>('roleproof.jobs.v1', demoJobs, parseStoredJobs)
   const [evidence, setEvidence] = useLocalStorage<Evidence[]>('roleproof.evidence.v1', demoEvidence, parseStoredEvidence)
@@ -94,7 +98,7 @@ function App() {
   return <div className="app-shell">
     <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`}>
       <button className="brand" onClick={() => navigate('dashboard')}><span className="brand-mark">R</span><span><strong>RoleProof</strong><small>职证台</small></span></button>
-      <div className="mode-card"><i /><span><strong>Demo / Rule Mode</strong><small>无需 API Key，完整闭环可用</small></span></div>
+      <div className="mode-card"><i /><span><strong>Independent Portfolio</strong><small>个人独立项目 · 合成业务数据</small></span></div>
       <nav>{navItems.map((item) => { const Icon = item.icon; return <button className={view === item.id ? 'active' : ''} key={item.id} onClick={() => navigate(item.id)}><Icon size={18} /><span><small>{item.eyebrow}</small>{item.label}</span></button> })}</nav>
       <div className="sidebar-footer"><div className="progress-ring"><span>{evidenceCompleteness}%</span></div><span><strong>证据档案完整度</strong><small>{evidence.length} 个项目 · {attachedMaterialCount} 份已挂材料</small></span></div>
     </aside>
@@ -110,6 +114,8 @@ function App() {
         </div>
       </header>
       <div className="content">
+        {view === 'project' && <ProjectCase />}
+        {view === 'evaluation' && <EvaluationLab />}
         {view === 'dashboard' && <Dashboard jobs={scoredJobs} evidence={evidence} decisions={decisions} interviews={interviews} chooseJob={chooseJob} navigate={navigate} />}
         {view === 'intelligence' && <Intelligence jobs={scoredJobs} chooseJob={chooseJob} onCreate={(job) => setJobs((items) => [job, ...items])} />}
         {view === 'detail' && <JobDetail key={selectedJob.id} job={selectedJob} score={score.total} onUpdate={(job) => setJobs((items) => items.map((item) => item.id === job.id ? job : item))} navigate={navigate} />}

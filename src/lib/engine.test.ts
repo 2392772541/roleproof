@@ -15,7 +15,7 @@ describe('Rule Mode engine', () => {
     const matches = buildMatches(demoJobs[0], demoEvidence)
     const validIds = new Set(demoEvidence.map((item) => item.id))
     expect(matches.flatMap((item) => item.evidenceIds).every((id) => validIds.has(id))).toBe(true)
-    expect(ensureEvidenceReferences(['P014', 'NOT-EXISTS'], demoEvidence)).toEqual(['P014'])
+    expect(ensureEvidenceReferences(['P001', 'NOT-EXISTS'], demoEvidence)).toEqual(['P001'])
   })
 
   it('keeps score parts equal to total and within 100', () => {
@@ -46,3 +46,18 @@ describe('Rule Mode engine', () => {
     expect(rejected[0].evidenceIds).toEqual([])
     expect(rejected[0].strength).toBe(0)
   })})
+
+
+describe('offline evaluation dataset', () => {
+  it('keeps every parsed requirement traceable to an exact JD sentence', () => {
+    const cases = [
+      '负责企业级 AI Agent 产品规划与工作流设计；建立模型评测体系并推动版本迭代；关键动作需经过人工审批并保留审计记录。',
+      '负责企业知识库、RAG 检索与问答产品；设计引用校验、拒答和人工反馈机制；关注隐私、延迟与成本。',
+    ]
+    for (const [index, jd] of cases.entries()) {
+      const parsed = parseJD(`EVAL-${index + 1}`, jd)
+      expect(parsed.length).toBeGreaterThan(0)
+      expect(parsed.every((requirement) => jd.includes(requirement.text))).toBe(true)
+    }
+  })
+})

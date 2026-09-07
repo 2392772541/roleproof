@@ -17,8 +17,18 @@ test('核心求职闭环可真实操作并导出工作区', async ({ page }, tes
   page.on('pageerror', (error) => consoleErrors.push(error.message))
 
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /不是告诉你.*为什么匹配/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /个人独立项目证据包/ })).toBeVisible()
   if (testInfo.project.name === 'chromium-desktop') await page.screenshot({ path: 'docs/roleproof-overview.png', fullPage: true })
+  if (testInfo.project.name === 'chromium-mobile') await page.screenshot({ path: 'docs/roleproof-mobile.png', fullPage: true })
+
+  await openSidebarView(page, '评测实验室')
+  await expect(page.getByText('术语覆盖率')).toBeVisible()
+  await expect(page.locator('.eval-metric').nth(0)).toContainText('100%')
+  await expect(page.locator('.eval-metric').nth(1)).toContainText('58%')
+  await expect(page.locator('.eval-metric').nth(2)).toContainText('100%')
+  await expect(page.locator('.eval-metric').nth(3)).toContainText('0')
+  await expect(page.locator('.eval-case')).toHaveCount(4)
+  if (testInfo.project.name === 'chromium-desktop') await page.screenshot({ path: 'docs/roleproof-evaluation.png', fullPage: true })
 
   await openSidebarView(page, '职位情报')
   await page.getByRole('button', { name: '录入职位' }).click()
@@ -81,7 +91,6 @@ test('核心求职闭环可真实操作并导出工作区', async ({ page }, tes
   if (testInfo.project.name === 'chromium-mobile') {
     const bodyFitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
     expect(bodyFitsViewport).toBe(true)
-    await page.screenshot({ path: 'docs/roleproof-mobile.png', fullPage: true })
   }
   expect(consoleErrors).toEqual([])
 })
@@ -92,7 +101,7 @@ test('核心求职闭环可真实操作并导出工作区', async ({ page }, tes
 test('拒绝会清空职位并导致应用崩溃的非法工作区导入', async ({ page }) => {
   await resetWorkspace(page)
   await page.goto('/')
-  await expect(page.locator('.job-switcher option')).toHaveCount(6)
+  await expect(page.locator('.job-switcher option')).toHaveCount(3)
 
   const dialogPromise = page.waitForEvent('dialog', { timeout: 3000 })
   await page.locator('input[type="file"]').setInputFiles({
@@ -104,8 +113,8 @@ test('拒绝会清空职位并导致应用崩溃的非法工作区导入', async
   expect(dialog.message()).toContain('导入失败')
   await dialog.accept()
 
-  await expect(page.locator('.job-switcher option')).toHaveCount(6)
-  await expect(page.getByRole('heading', { name: /不是告诉你.*为什么匹配/ })).toBeVisible()
+  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await expect(page.getByRole('heading', { name: /个人独立项目证据包/ })).toBeVisible()
 })
 
 test('损坏的 localStorage 不阻止应用启动并会回退到演示数据', async ({ page }) => {
@@ -114,8 +123,9 @@ test('损坏的 localStorage 不阻止应用启动并会回退到演示数据', 
     localStorage.setItem('roleproof.evidence.v1', 'not-json')
   })
   await page.goto('/')
-  await expect(page.locator('.job-switcher option')).toHaveCount(6)
-  await expect(page.locator('.metric-card').first()).toContainText('06')
+  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await openSidebarView(page, '总览')
+  await expect(page.locator('.metric-card').first()).toContainText('03')
 })
 
 
@@ -137,7 +147,7 @@ test('空白公司、岗位和 JD 不会被当作有效职位保存', async ({ p
   expect(message).toContain('不能为空')
 
   await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.locator('.job-switcher option')).toHaveCount(6)
+  await expect(page.locator('.job-switcher option')).toHaveCount(3)
 })
 
 test('职位列表分数与岗位详情的实时证据分数保持一致', async ({ page }) => {
@@ -162,8 +172,8 @@ test('侧栏证据完整度和材料数量来自真实数据而非硬编码', as
   await resetWorkspace(page)
   await page.goto('/')
   const footer = page.locator('.sidebar-footer')
-  await expect(footer).toContainText('67%')
-  await expect(footer).toContainText('6 个项目 · 0 份已挂材料')
+  await expect(footer).toContainText('100%')
+  await expect(footer).toContainText('3 个项目 · 12 份已挂材料')
 })
 
 test('被人工驳回的证据匹配不会进入作品集', async ({ page }) => {
@@ -233,9 +243,10 @@ test('语法正确但结构错误的 localStorage 会被拒绝并回退演示数
     localStorage.setItem('roleproof.decisions.v1', JSON.stringify({ unexpected: true }))
   })
   await page.goto('/')
-  await expect(page.locator('.job-switcher option')).toHaveCount(6)
-  await expect(page.locator('.metric-card').first()).toContainText('06')
-  await expect(page.locator('.sidebar-footer')).toContainText('6 个项目')
+  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await openSidebarView(page, '总览')
+  await expect(page.locator('.metric-card').first()).toContainText('03')
+  await expect(page.locator('.sidebar-footer')).toContainText('3 个项目')
 })
 
 test('编辑后采用会真实修改证据引用并约束下游作品集', async ({ page }) => {
@@ -277,4 +288,3 @@ test('编辑后采用会真实修改证据引用并约束下游作品集', async
   await expect(page.locator('.portfolio-section footer')).toContainText('P-ONE')
   await expect(page.locator('.portfolio-section footer')).not.toContainText('P-TWO')
 })
-
