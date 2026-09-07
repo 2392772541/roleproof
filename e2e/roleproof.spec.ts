@@ -117,6 +117,33 @@ test('拒绝会清空职位并导致应用崩溃的非法工作区导入', async
   await expect(page.getByRole('heading', { name: /个人独立项目证据包/ })).toBeVisible()
 })
 
+test('恢复演示数据需要人工确认并清除浏览器中的旧项目数据', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('roleproof.jobs.v1', JSON.stringify([{
+      id: 'J-OLD', company: '旧版虚构公司', title: '旧岗位', location: '北京', salary: '面议', stage: '关注', score: 0, updatedAt: '2026-09-04', tags: [],
+      source: { name: '旧演示数据', url: '#', capturedAt: '2026-09-04' },
+      jd: '负责旧版 AI 产品功能。',
+      requirements: [{ id: 'R-OLD', jobId: 'J-OLD', text: '负责旧版 AI 产品功能', kind: 'product', weight: 8, keywords: ['产品'] }],
+    }]))
+    localStorage.setItem('roleproof.selected-job.v1', JSON.stringify('J-OLD'))
+    localStorage.setItem('roleproof.evidence.v1', JSON.stringify([]))
+  })
+  await page.goto('/')
+  await expect(page.locator('.job-switcher')).toContainText('旧版虚构公司')
+
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('confirm')
+    expect(dialog.message()).toContain('尚未导出')
+    await dialog.accept()
+  })
+  await page.getByTitle('恢复演示数据').click()
+
+  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await expect(page.locator('.job-switcher')).toContainText('公开岗位研究样本 A')
+  await expect(page.locator('.sidebar-footer')).toContainText('3 个项目 · 12 份已挂材料')
+  await expect(page.getByRole('heading', { name: /个人独立项目证据包/ })).toBeVisible()
+})
+
 test('损坏的 localStorage 不阻止应用启动并会回退到演示数据', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('roleproof.jobs.v1', '{broken-json')

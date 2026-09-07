@@ -34,7 +34,7 @@ export const portfolioProjects: PortfolioProject[] = [
       { label: '案例复盘', url: 'https://github.com/2392772541/roleproof/blob/main/docs/case-study.md' },
       { label: '评测方案', url: 'https://github.com/2392772541/roleproof/blob/main/docs/evaluation-plan.md' },
     ],
-    verifiedMetrics: ['12 条 Vitest 测试', '22 个桌面/移动端 E2E 用例运行', '5 维可解释评分', '100% Evidence ID 合法性校验'],
+    verifiedMetrics: ['12 条 Vitest 测试', '24 个桌面/移动端 E2E 用例运行', '5 维可解释评分', '100% Evidence ID 合法性校验'],
     limitations: ['默认数据保存在 localStorage', '尚未接入真实招聘平台', '规则解析不能替代复杂语义模型', '尚无真实求职用户样本与转化数据'],
     interviewValue: ['问题定义与 MVP 取舍', 'Human-in-the-loop', 'AI 可信度与证据链', '评测与回归测试', '从原型到公开部署'],
   },

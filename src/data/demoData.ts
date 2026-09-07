@@ -6,7 +6,7 @@ export const demoEvidence: Evidence[] = [
     role: '个人独立项目｜产品定义、交互、规则引擎、前端、测试与发布',
     capability: ['AI Evaluation', '证据引用', 'HITL', '求职产品', '数据建模', 'Agent 边界'],
     action: '定义 Job、Requirement、Evidence、Match、Decision Log 和 Interview Record；将 AI 建议设为待确认，落实接受、编辑、驳回对评分与下游生成的真实约束。',
-    result: '完成 7 个工作台页面、严格导入校验、12 条单元测试、22 个桌面/移动端 E2E 用例运行，并发布 GitHub Pages。',
+    result: '完成 7 个工作台页面、严格导入校验、12 条单元测试、24 个桌面/移动端 E2E 用例运行，并发布 GitHub Pages。',
     summary: '解决“简历写得更好看但无法证明”的问题：所有岗位匹配、作品集段落和面试问题都回到合法 Evidence ID；没有证据时显示 Gap。',
     verification: 'verified',
     links: [
@@ -15,7 +15,7 @@ export const demoEvidence: Evidence[] = [
       { label: '案例复盘', url: 'https://github.com/2392772541/roleproof/blob/main/docs/case-study.md', type: 'report' },
       { label: '评测方案', url: 'https://github.com/2392772541/roleproof/blob/main/docs/evaluation-plan.md', type: 'report' },
     ],
-    metrics: ['7 个核心页面', '12 条 Vitest', '22 个 E2E 运行', '5 维解释评分'], updatedAt: '2026-09-07',
+    metrics: ['7 个核心页面', '12 条 Vitest', '24 个 E2E 运行', '5 维解释评分'], updatedAt: '2026-09-07',
   },
   {
     id: 'P002', project: 'FlowerOps AI 花掌柜', title: '从经营异常到人工审批、安全执行和审计的 Agent 工作流',

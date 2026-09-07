@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Bell, ChevronDown, Download, FileSearch, FlaskConical, FolderKanban, LayoutDashboard, Library, Menu, MessageSquareText, Network, Radar, Upload, WandSparkles } from 'lucide-react'
+import { Bell, ChevronDown, Download, FileSearch, FlaskConical, FolderKanban, LayoutDashboard, Library, Menu, MessageSquareText, Network, Radar, RotateCcw, Upload, WandSparkles } from 'lucide-react'
 import './App.css'
 import { demoEvidence, demoJobs } from './data/demoData'
 import type { DecisionLog, DecisionStatus, Evidence, InterviewRecord, Job, PortfolioSection } from './domain/types'
@@ -95,6 +95,17 @@ function App() {
     reader.readAsText(file)
   }
 
+  const resetDemoWorkspace = () => {
+    if (!window.confirm('恢复为当前公开演示数据？这会清除本浏览器中尚未导出的职位、证据、决策、作品集和面试记录。')) return
+    setJobs(demoJobs)
+    setEvidence(demoEvidence)
+    setSelectedJobId(demoJobs[0].id)
+    setDecisions([])
+    setPortfolio([])
+    setInterviews([])
+    setView('project')
+  }
+
   return <div className="app-shell">
     <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`}>
       <button className="brand" onClick={() => navigate('dashboard')}><span className="brand-mark">R</span><span><strong>RoleProof</strong><small>职证台</small></span></button>
@@ -110,7 +121,7 @@ function App() {
         <div className="topbar-actions">
           <label className="job-switcher"><span>{selectedJob.company}</span><select value={selectedJob.id} onChange={(event) => setSelectedJobId(event.target.value)}>{scoredJobs.map((job) => <option key={job.id} value={job.id}>{job.company} · {job.title}</option>)}</select><ChevronDown size={15} /></label>
           <button className="icon-button" title="导入" onClick={() => fileRef.current?.click()}><Upload size={18} /></button><input ref={fileRef} hidden type="file" accept="application/json" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; importWorkspace(file) }} />
-          <button className="icon-button" title="导出" onClick={exportWorkspace}><Download size={18} /></button><button className="icon-button notification"><Bell size={18} /><i /></button><div className="avatar">PM</div>
+          <button className="icon-button" title="导出" onClick={exportWorkspace}><Download size={18} /></button><button className="icon-button" title="恢复演示数据" onClick={resetDemoWorkspace}><RotateCcw size={18} /></button><button className="icon-button notification"><Bell size={18} /><i /></button><div className="avatar">PM</div>
         </div>
       </header>
       <div className="content">
