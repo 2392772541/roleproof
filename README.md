@@ -6,7 +6,7 @@
 - GitHub：https://github.com/2392772541/roleproof
 - 项目性质：个人独立作品
 - 数据边界：默认职位与业务内容均为合成研究样本，不是本人真实投递、客户或商业成绩
-- 最近验证：2026-09-07
+- 最近验证：2026-09-09
 
 ## 为什么做
 
@@ -14,7 +14,10 @@
 
 ## 当前真实交付
 
-- 9 个产品入口：项目档案、评测实验室、总览、职位情报、岗位解析、证据匹配、证据库、作品集工坊、面试复盘。
+- 3 个主入口：工作台、我的职位、项目证据库；项目介绍与评测为辅助入口。
+- 独立岗位路由：岗位要求 → 证据核对 → 投递材料 → 面试复盘，支持刷新、前进/后退与深链接。
+- 五阶段职位看板、列表与搜索；每个岗位显示真实准备进度及下一步动作。
+- 已确认或手工编辑的投递材料可下载为 Markdown，带项目来源链接；待确认/驳回内容不导出。
 - 3 个真实公开项目证据：RoleProof、FlowerOps AI、SignalDesk。
 - 3 组公开岗位研究样本，明确标注为非投递记录、非单一公司原版 JD。
 - Accept / Edit / Reject 真正约束评分与下游生成。
@@ -38,7 +41,7 @@
 
 ## 面试演示重点
 
-1. **项目档案**：主动说明个人项目、合成数据和未验证指标。
+1. **真实任务演示**：从工作台录入目标 JD，进入该职位独立工作区；更改阶段，返回看板验证，再刷新验证数据持久化。
 2. **证据匹配**：演示 Reject 后强度归零且不能进入作品集；Edit 后改用人工选择的 Evidence ID。
 3. **评测实验室**：展示固定样本、实时指标和分类 Bad Case，而不是说“AI 很准”。
 4. **工程证据**：打开 GitHub、Actions、测试、文档和在线 Demo。
@@ -69,7 +72,8 @@
 
 ## 截图
 
-![项目档案](docs/roleproof-overview.png)
+![工作台](docs/roleproof-overview.png)
+![职位阶段看板](docs/roleproof-board.png)
 ![评测实验室](docs/roleproof-evaluation.png)
 ![证据矩阵](docs/roleproof-match.png)
 ![岗位作品集](docs/roleproof-portfolio.png)
@@ -88,6 +92,7 @@ npm run check:all
 
 ## 文档
 
+- [工作区重新设计：问题、决策与验收](docs/workspace-redesign.md)
 - [PRD](docs/PRD.md)
 - [案例复盘与面试脚本](docs/case-study.md)
 - [2026 岗位研究](docs/job-research-2026.md)

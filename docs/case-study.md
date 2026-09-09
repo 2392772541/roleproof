@@ -36,7 +36,7 @@ MVP 使用无需 Key 的 Rule Mode，保证面试现场可运行，并为模型 
 
 ## 6. 可核验结果
 
-9 个产品入口、3 个真实公开项目证据、严格 Schema 与关系校验、Vitest、桌面/移动 Playwright、GitHub 仓库、Actions、Pages、PRD、AI 边界、评测与缺陷审计文档。以上是工程交付，不是商业 KPI。
+3 个全局主入口、岗位内独立任务路由、阶段看板、材料导出、3 个真实公开项目证据、严格 Schema 与关系校验、Vitest、桌面/移动 Playwright、GitHub 仓库、Actions、Pages、PRD、AI 边界、评测与缺陷审计文档。以上是工程交付，不是商业 KPI。
 
 ## 7. 5–7 分钟面试脚本
 

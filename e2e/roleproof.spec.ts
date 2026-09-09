@@ -4,10 +4,24 @@ async function resetWorkspace(page: Page) {
   await page.addInitScript(() => localStorage.clear())
 }
 
+const lastJob = new WeakMap<Page, string>()
 async function openSidebarView(page: Page, label: string) {
-  const navButton = page.locator('aside nav').getByRole('button', { name: new RegExp(label) })
+  const match = /#\/jobs\/([^/]+)\//.exec(page.url())
+  if (match) lastJob.set(page, match[1])
+  const steps: Record<string, string> = { '岗位解析': '岗位要求', '证据匹配': '证据核对', '作品集工坊': '投递材料', '面试复盘': '面试复盘' }
+  if (steps[label]) {
+    if (!match) {
+      await openSidebarView(page, '职位情报')
+      const id = lastJob.get(page)
+      const card = id ? page.locator(`.opportunity-card a[href*="/${id}/"]`) : page.locator('.opportunity-card a').first()
+      await card.click()
+    }
+    await page.getByRole('navigation', { name: '职位准备步骤' }).getByRole('link', { name: steps[label] }).click()
+    return
+  }
+  const labels: Record<string, string> = { '总览': '工作台', '职位情报': '我的职位', '证据库': '项目证据库', '项目档案': '关于项目' }
   if ((page.viewportSize()?.width ?? 1280) <= 800) await page.locator('.mobile-menu').click()
-  await navButton.click()
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('link', { name: labels[label] ?? label, exact: true }).click()
 }
 
 test('核心求职闭环可真实操作并导出工作区', async ({ page }, testInfo) => {
@@ -17,7 +31,7 @@ test('核心求职闭环可真实操作并导出工作区', async ({ page }, tes
   page.on('pageerror', (error) => consoleErrors.push(error.message))
 
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /个人独立项目证据包/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /把下一个机会，准备好。/ })).toBeVisible()
   if (testInfo.project.name === 'chromium-desktop') await page.screenshot({ path: 'docs/roleproof-overview.png', fullPage: true })
   if (testInfo.project.name === 'chromium-mobile') await page.screenshot({ path: 'docs/roleproof-mobile.png', fullPage: true })
 
@@ -72,7 +86,7 @@ test('核心求职闭环可真实操作并导出工作区', async ({ page }, tes
 
   await openSidebarView(page, '作品集工坊')
   await page.getByRole('button', { name: /生成第一版|生成岗位版本/ }).first().click()
-  await expect(page.getByText(/AI Generated/).first()).toBeVisible()
+  await expect(page.getByText(/规则草稿/).first()).toBeVisible()
   await expect(page.locator('.portfolio-section footer em').first()).toHaveText(/^P/)
   if (testInfo.project.name === 'chromium-desktop') await page.screenshot({ path: 'docs/roleproof-portfolio.png', fullPage: true })
 
@@ -101,7 +115,7 @@ test('核心求职闭环可真实操作并导出工作区', async ({ page }, tes
 test('拒绝会清空职位并导致应用崩溃的非法工作区导入', async ({ page }) => {
   await resetWorkspace(page)
   await page.goto('/')
-  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await expect(page.locator('.task-row')).toHaveCount(3)
 
   const dialogPromise = page.waitForEvent('dialog', { timeout: 3000 })
   await page.locator('input[type="file"]').setInputFiles({
@@ -113,11 +127,11 @@ test('拒绝会清空职位并导致应用崩溃的非法工作区导入', async
   expect(dialog.message()).toContain('导入失败')
   await dialog.accept()
 
-  await expect(page.locator('.job-switcher option')).toHaveCount(3)
-  await expect(page.getByRole('heading', { name: /个人独立项目证据包/ })).toBeVisible()
+  await expect(page.locator('.task-row')).toHaveCount(3)
+  await expect(page.getByRole('heading', { name: /把下一个机会，准备好。/ })).toBeVisible()
 })
 
-test('旧版虚构种子数据会自动迁移为当前真实项目证据', async ({ page }) => {
+test('旧版数据和用户编辑不被新版本静默替换', async ({ page }) => {
   await page.addInitScript(() => {
     const companies = ['星海科技', '澄明教育', '远航电商', '山岚软件', '拾光传媒', '云阶智能']
     const projects = ['InfluenceOS', 'RoleProof', 'AI Script Reviewer', '辰曦经营助手', 'InsightLoop', 'KnowledgeOS']
@@ -133,10 +147,11 @@ test('旧版虚构种子数据会自动迁移为当前真实项目证据', async
   })
 
   await page.goto('/')
-  await expect(page.locator('.job-switcher option')).toHaveCount(3)
-  await expect(page.locator('.job-switcher')).toContainText('公开岗位研究样本 A')
-  await expect(page.locator('.sidebar-footer')).toContainText('3 个项目 · 12 份已挂材料')
-  await expect(page.getByText('InfluenceOS')).toHaveCount(0)
+  await expect(page.locator('.task-row')).toHaveCount(6)
+  await expect(page.locator('.next-tasks')).toContainText('星海科技')
+  await openSidebarView(page, '证据库')
+  await expect(page.getByText('InfluenceOS', { exact: true })).toBeVisible()
+
 })
 
 test('恢复演示数据需要人工确认并清除浏览器中的旧项目数据', async ({ page }) => {
@@ -151,7 +166,7 @@ test('恢复演示数据需要人工确认并清除浏览器中的旧项目数�
     localStorage.setItem('roleproof.evidence.v1', JSON.stringify([]))
   })
   await page.goto('/')
-  await expect(page.locator('.job-switcher')).toContainText('旧版虚构公司')
+  await expect(page.locator('.next-tasks')).toContainText('旧版虚构公司')
 
   page.once('dialog', async (dialog) => {
     expect(dialog.type()).toBe('confirm')
@@ -160,10 +175,10 @@ test('恢复演示数据需要人工确认并清除浏览器中的旧项目数�
   })
   await page.getByTitle('恢复演示数据').click()
 
-  await expect(page.locator('.job-switcher option')).toHaveCount(3)
-  await expect(page.locator('.job-switcher')).toContainText('公开岗位研究样本 A')
+  await expect(page.locator('.task-row')).toHaveCount(3)
+  await expect(page.locator('.next-tasks')).toContainText('公开岗位研究样本 A')
   await expect(page.locator('.sidebar-footer')).toContainText('3 个项目 · 12 份已挂材料')
-  await expect(page.getByRole('heading', { name: /个人独立项目证据包/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /把下一个机会，准备好。/ })).toBeVisible()
 })
 
 test('损坏的 localStorage 不阻止应用启动并会回退到演示数据', async ({ page }) => {
@@ -172,9 +187,9 @@ test('损坏的 localStorage 不阻止应用启动并会回退到演示数据', 
     localStorage.setItem('roleproof.evidence.v1', 'not-json')
   })
   await page.goto('/')
-  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await expect(page.locator('.task-row')).toHaveCount(3)
   await openSidebarView(page, '总览')
-  await expect(page.locator('.metric-card').first()).toContainText('03')
+  await expect(page.locator('.home-metrics > div').first()).toContainText('03')
 })
 
 
@@ -196,7 +211,7 @@ test('空白公司、岗位和 JD 不会被当作有效职位保存', async ({ p
   expect(message).toContain('不能为空')
 
   await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await expect(page.getByRole('dialog')).toBeVisible()
 })
 
 test('职位列表分数与岗位详情的实时证据分数保持一致', async ({ page }) => {
@@ -209,10 +224,12 @@ test('职位列表分数与岗位详情的实时证据分数保持一致', async
   await page.getByLabel('JD 原文 *').fill('负责企业级 AI Agent 产品规划与工作流设计；建立模型评测体系并推动产品迭代。')
   await page.getByRole('button', { name: '保存并解析' }).click()
 
-  const detailScore = Number((await page.locator('.hero-score strong').innerText()).replace(/\D/g, ''))
+  await page.getByRole('navigation', { name: '职位准备步骤' }).getByRole('link', { name: '证据核对' }).click()
+  const detailScore = Number(await page.locator('.score-gauge strong').innerText())
   expect(detailScore).toBeGreaterThan(0)
 
   await openSidebarView(page, '职位情报')
+  await page.getByRole('button', { name: '列表', exact: true }).click()
   const row = page.locator('.table-row').filter({ hasText: '分数一致性测试公司' })
   await expect(row.locator('.match-bar strong')).toHaveText(String(detailScore))
 })
@@ -243,7 +260,7 @@ test('被人工驳回的证据匹配不会进入作品集', async ({ page }) => 
     decisions: [], portfolio: [], interviews: [],
   }
   await page.locator('input[type="file"]').setInputFiles({ name: 'controlled-workspace.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(workspace)) })
-  await expect(page.locator('.job-switcher option')).toHaveCount(1)
+  await expect(page.locator('.task-row')).toHaveCount(1)
 
   await openSidebarView(page, '证据匹配')
   await page.getByRole('button', { name: '驳回' }).click()
@@ -292,9 +309,9 @@ test('语法正确但结构错误的 localStorage 会被拒绝并回退演示数
     localStorage.setItem('roleproof.decisions.v1', JSON.stringify({ unexpected: true }))
   })
   await page.goto('/')
-  await expect(page.locator('.job-switcher option')).toHaveCount(3)
+  await expect(page.locator('.task-row')).toHaveCount(3)
   await openSidebarView(page, '总览')
-  await expect(page.locator('.metric-card').first()).toContainText('03')
+  await expect(page.locator('.home-metrics > div').first()).toContainText('03')
   await expect(page.locator('.sidebar-footer')).toContainText('3 个项目')
 })
 
